@@ -1,8 +1,8 @@
 {
     "name": "epic/facade",
     "description": "Simple and agile facade implementation",
-    "keywords": ["log", "logger"],
-    "homepage": "http://github.com/alexeytihomirov/Epilog/",
+    "keywords": ["facade"],
+    "homepage": "http://github.com/alexeytihomirov/epic-facade/",
     "type": "library",
     "license": "MIT",
     "authors": [
