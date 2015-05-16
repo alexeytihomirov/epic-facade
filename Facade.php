@@ -1,4 +1,4 @@
-<?php namespace Epic\Facades;
+<?php namespace Epic\Facade;
 
 abstract class Facade
 {
