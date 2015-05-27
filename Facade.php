@@ -7,7 +7,7 @@ class Facade
     public static function add($instance = null, $alias = null)
     {
         $calledBy = get_called_class();
-        if($calledBy != __CLASS__) {
+        if ($calledBy != __CLASS__) {
             return forward_static_call([$calledBy, '__callStatic'], __FUNCTION__, func_get_args());
         }
 
@@ -43,8 +43,12 @@ class Facade
                 static::$facadeContainer[$facadeName] = $object;
             }
 
-            static::facadeAlias($facadeName);
-
+            try {
+                static::facadeAlias($facadeName);
+            }catch (\Exception $e) {
+                unset(static::$facadeContainer[$facadeName]);
+                throw $e;
+            }
         }
 
         return true;
@@ -60,8 +64,12 @@ class Facade
     protected static function facadeAlias($alias = null)
     {
         $calledBy = get_called_class();
-        if($calledBy != __CLASS__) {
+        if ($calledBy != __CLASS__) {
             return forward_static_call([$calledBy, '__callStatic'], __FUNCTION__, func_get_args());
+        }
+
+        if (1 !== preg_match('/^[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*$/', $alias)) {
+            throw new \LogicException('Class name "' . $alias . '" is invalid.');
         }
 
         if (!class_exists($alias) && $alias) {
