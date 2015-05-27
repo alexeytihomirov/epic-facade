@@ -1,70 +1,75 @@
 <?php namespace Epic\Facade;
 
-abstract class Facade
+class Facade
 {
     protected static $facadeContainer;
-    protected static $defaultFacadeAlias = null;
 
-    public static function getFacadeContainer()
+    public static function add($instance = null, $alias = null)
     {
-        return static::$facadeContainer;
-    }
-
-    public static function getDefaultFacadeAlias()
-    {
-        if (!$alias = static::$defaultFacadeAlias) {
-            $fullClassPath = get_called_class();
-            if (false === strpos($fullClassPath, '\\')) {
-
-                $alias = $fullClassPath;
-            }else {
-                $pathParts = explode('\\', $fullClassPath);
-                $alias = $pathParts[count($pathParts) - 1];
-            }
+        $calledBy = get_called_class();
+        if($calledBy != __CLASS__) {
+            return forward_static_call([$calledBy, '__callStatic'], __FUNCTION__, func_get_args());
         }
 
-        return $alias;
-    }
+        if (!is_array($instance)) {
+            $instance = [($alias === null) ? 0 : $alias => $instance];
+        }
 
-    public static function setFacadeContainer($facadeContainer)
-    {
-        static::$facadeContainer = $facadeContainer;
-    }
+        $getAlias = function ($object, $alias = null) {
+            if (null === $alias) {
+                $fullClassPath = get_class($object);
+                if (false === strpos($fullClassPath, '\\')) {
+                    $alias = $fullClassPath;
+                } else {
+                    $pathParts = explode('\\', $fullClassPath);
+                    $alias = $pathParts[count($pathParts) - 1];
+                }
+            }
+            return $alias;
+        };
 
-    protected static function getFacadeAccessor()
-    {
-        throw new RuntimeException("Facade does not implement getFacadeAccessor method.");
-    }
+        foreach ($instance as $alias => $object) {
+            if (!is_object($object)) {
+                throw new \InvalidArgumentException('Object expected but other type is given.');
+            }
+            if (is_int($alias)) {
+                $alias = null;
+            }
+            $facadeName = $getAlias($object, $alias);
 
-    protected static function getFacadeInstance()
-    {
-        return false;
+            if (isset(static::$facadeContainer[$facadeName])) {
+                throw new \LogicException('Facade with name "' . $alias . '" already exist. Please provide another alias');
+            } else {
+                static::$facadeContainer[$facadeName] = $object;
+            }
+
+            static::facadeAlias($facadeName);
+
+        }
+
+        return true;
     }
 
     public static function __callStatic($method, $args)
     {
-        if (!($instance = static::getFacadeInstance())) {
-            $instance = static::getFacadeContainer()[static::getFacadeAccessor()];
+        $instance = static::$facadeContainer[get_called_class()];
+        return call_user_func_array(array($instance, $method), $args);
+
+    }
+
+    protected static function facadeAlias($alias = null)
+    {
+        $calledBy = get_called_class();
+        if($calledBy != __CLASS__) {
+            return forward_static_call([$calledBy, '__callStatic'], __FUNCTION__, func_get_args());
         }
 
-        switch (count($args)) {
-            case 0:
-                return $instance->$method();
-
-            case 1:
-                return $instance->$method($args[0]);
-
-            case 2:
-                return $instance->$method($args[0], $args[1]);
-
-            case 3:
-                return $instance->$method($args[0], $args[1], $args[2]);
-
-            case 4:
-                return $instance->$method($args[0], $args[1], $args[2], $args[3]);
-
-            default:
-                return call_user_func_array(array($instance, $method), $args);
+        if (!class_exists($alias) && $alias) {
+            eval("class $alias extends \\Epic\\Facade\\Facade {}");
+        } else {
+            throw new \LogicException('Class with name "' . $alias . '" already exist. Please provide another alias.');
         }
+
+        return true;
     }
 }
